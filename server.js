@@ -29,7 +29,6 @@ app.use(express.static(__dirname));
 app.use(express.json());
 app.use(express.static(__dirname));
 
-// --- PASTE THE NEW MOBILE DETECTION CODE HERE ---
 app.use((req, res, next) => {
   const platform = req.headers['x-app-platform'];
   const userAgent = req.headers['user-agent'] || '';
@@ -219,7 +218,7 @@ app.post('/api/data', (req, res) => {
   }
 });
 
-// Attack simulation endpoint - THE KEY FIX IS HERE
+// Attack simulation endpoint 
 app.post('/api/simulate/attack', (req, res) => {
   try {
     const { attackType } = req.body;
@@ -358,9 +357,9 @@ function countFailedLogins(username) {
   ).length;
 }
 
-// Serve dashboard.html as default route
+// Serve index.html as default route
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'dashbord.html')); // Note: keeping your filename
+  res.sendFile(path.join(__dirname, 'index.html')); 
 });
 
 const PORT = process.env.PORT || 5000;
@@ -374,7 +373,7 @@ const server = app.listen(PORT, '0.0.0.0', () => {
 ║                                                      ║
 ║  ✅ Server running on: http://localhost:${PORT}       ║
 ║  📊 Dashboard:      http://localhost:${PORT}/        ║
-║  🩺 Health Check:   http://localhost:${PORT}/api/health║
+║  🩺 Health Check:   http://localhost:${PORT}/api/health║ // if localhost not working use 127.0.0.0:port number
 ║                                                      ║
 ║     API Endpoints:                                   ║
 ║     • POST /api/login                                ║
@@ -417,3 +416,4 @@ setInterval(() => {
     apiMetrics.push(metric);
   }
 }, 5000);
+
