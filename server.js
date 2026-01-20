@@ -373,7 +373,7 @@ const server = app.listen(PORT, '0.0.0.0', () => {
 ║                                                      ║
 ║  ✅ Server running on: http://localhost:${PORT}       ║
 ║  📊 Dashboard:      http://localhost:${PORT}/        ║
-║  🩺 Health Check:   http://localhost:${PORT}/api/health║ // if localhost not working use 127.0.0.0:port number
+║  🩺 Health Check:   http://localhost:${PORT}/api/health║ // if localhost not working use 127.0.0.1:port number
 ║                                                      ║
 ║     API Endpoints:                                   ║
 ║     • POST /api/login                                ║
@@ -416,4 +416,5 @@ setInterval(() => {
     apiMetrics.push(metric);
   }
 }, 5000);
+
 
