@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>🔒 SecureAPI Sentinel - Security Monitoring Demo</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0f172a; 
+            color: #f8fafc;
+            padding: 20px;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        
+        header {
+            background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%);
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            border: 1px solid #334155;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 25px;
+            margin-bottom: 25px;
+        }
+        
+        .card {
+            background: #1e293b;
+            border-radius: 12px;
+            padding: 25px;
+            border: 1px solid #334155;
+        }
+        
+        .card h3 { 
+            color: #60a5fa; 
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .card h3 i { font-size: 1.2em; }
+        
+        .severity-high { color: #f87171; }
+        .severity-medium { color: #fbbf24; }
+        .severity-low { color: #60a5fa; }
+        
+        .event-list, .suricata-alerts {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .event-item, .alert-item {
+            padding: 15px;
+            margin-bottom: 10px;
+            background: #0f172a;
+            border-radius: 8px;
+            border-left: 4px solid;
+        }
+        
+        .event-critical { border-left-color: #dc2626; }
+        .event-high { border-left-color: #ea580c; }
+        .event-medium { border-left-color: #ca8a04; }
+        .event-low { border-left-color: #2563eb; }
+        
+        .alert-critical { border-left-color: #dc2626; background: rgba(220, 38, 38, 0.1); }
+        .alert-high { border-left-color: #ea580c; background: rgba(234, 88, 12, 0.1); }
+        .alert-medium { border-left-color: #ca8a04; background: rgba(202, 138, 4, 0.1); }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            transition: transform 0.2s;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-3px);
+        }
+        
+        .stat-value {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        
+        .attack-simulator {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .attack-btn {
+            padding: 15px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s;
+            color: white;
+        }
+        
+        .attack-btn:hover {
+            transform: translateY(-2px);
+            opacity: 0.9;
+        }
+        
+        .btn-brute { background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); }
+        .btn-sql { background: linear-gradient(135deg, #ea580c 0%, #9a3412 100%); }
+        .btn-ddos { background: linear-gradient(135deg, #ca8a04 0%, #854d0e 100%); }
+        .btn-reset { background: linear-gradient(135deg, #475569 0%, #334155 100%); }
+        
+        .chart-container {
+            height: 300px;
+            margin-top: 20px;
+        }
+        
+        .log-entry {
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            padding: 8px 12px;
+            margin-bottom: 5px;
+            background: #0f172a;
+            border-radius: 4px;
+        }
+        
+        .timestamp { color: #94a3b8; font-size: 0.8em; }
+        .endpoint { color: #60a5fa; }
+        .ip-address { color: #34d399; }
+        .severity-badge {
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+        .badge-critical { background: #dc2626; }
+        .badge-high { background: #ea580c; }
+        .badge-medium { background: #ca8a04; }
+        .badge-low { background: #2563eb; }
+        .badge-info { background: #475569; }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .control-btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            background: #334155;
+            color: white;
+            font-weight: bold;
+        }
+        
+        .control-btn:hover {
+            background: #475569;
+        }
+        
+        .progress-container {
+            margin-top: 15px;
+            background: #0f172a;
+            border-radius: 8px;
+            padding: 10px;
+        }
+        
+        .progress-bar {
+            height: 10px;
+            background: #1e40af;
+            border-radius: 5px;
+            transition: width 0.5s;
+        }
+        
+        .simulation-active {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div>
+                <h1>🔒 SecureAPI Demonstration</h1>
+                <p>Real-time Security Monitoring & Threat Detection Demo</p>
+            </div>
+            <div class="controls">
+                <button class="control-btn" onclick="resetDemo()">🔄 Reset Demo</button>
+                <button class="control-btn" onclick="toggleTraffic()" id="trafficToggle">⏸️ Pause Traffic</button>
+            </div>
+        </header>
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div>Total Requests</div>
+                <div class="stat-value" id="totalRequests">0</div>
+                <div>Last 5 min</div>
+            </div>
+            <div class="stat-card">
+                <div>Security Events</div>
+                <div class="stat-value" id="securityEvents">0</div>
+                <div>Active threats</div>
+            </div>
+            <div class="stat-card">
+                <div>Suricata Alerts</div>
+                <div class="stat-value" id="suricataAlerts">0</div>
+                <div>Network threats</div>
+            </div>
+            <div class="stat-card">
+                <div>Avg Response Time</div>
+                <div class="stat-value" id="avgResponse">0ms</div>
+                <div>API performance</div>
+            </div>
+            <div class="stat-card">
+                <div>Attack Simulations</div>
+                <div class="stat-value" id="attackSims">0</div>
+                <div>Triggered</div>
+            </div>
+        </div>
+        
+        <div class="dashboard-grid">
+            <!-- Left Column -->
+            <div>
+                <div class="card">
+                    <h3>📈 API Traffic & Anomalies</h3>
+                    <div class="chart-container">
+                        <canvas id="trafficChart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="card" style="margin-top: 25px;">
+                    <h3>🎯 Attack Simulator</h3>
+                    <p>Trigger mock attacks to see detection in action:</p>
+                    <div class="attack-simulator">
+                        <button class="attack-btn btn-brute" onclick="simulateAttack('brute-force')">
+                            💥 Brute Force Attack
+                        </button>
+                        <button class="attack-btn btn-sql" onclick="simulateAttack('sql-injection')">
+                            🗃️ SQL Injection
+                        </button>
+                        <button class="attack-btn btn-ddos" onclick="simulateAttack('ddos')">
+                            🌪️ DDoS Traffic Spike
+                        </button>
+                    </div>
+                    <div id="simulationStatus" style="margin-top: 15px;"></div>
+                    <div id="simulationProgress" class="progress-container" style="display: none;">
+                        <div style="margin-bottom: 5px;">Attack simulation in progress...</div>
+                        <div class="progress-bar" id="progressBar" style="width: 0%;"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Right Column -->
+            <div>
+                <div class="card">
+                    <h3>🚨 Live Security Events</h3>
+                    <div class="event-list" id="eventList">
+                        <!-- Events will appear here -->
+                    </div>
+                </div>
+                
+                <div class="card" style="margin-top: 25px;">
+                    <h3>🔍 Suricata IDS Alerts</h3>
+                    <div class="suricata-alerts" id="suricataList">
+                        <!-- Suricata alerts will appear here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="dashboard-grid">
+            <div class="card">
+                <h3>📊 Request Logs</h3>
+                <div id="requestLogs" style="max-height: 250px; overflow-y: auto;">
+                    <!-- Logs will appear here -->
+                </div>
+            </div>
+            
+            <div class="card">
+                <h3>🛡️ Security Rules in Action</h3>
+                <div id="securityRules">
+                    <div class="log-entry">
+                        <span class="timestamp">[Active]</span> Rate limiting: 5 req/sec per IP
+                    </div>
+                    <div class="log-entry">
+                        <span class="timestamp">[Active]</span> SQL injection detection: pattern matching
+                    </div>
+                    <div class="log-entry">
+                        <span class="timestamp">[Active]</span> Brute force detection: >5 failed logins
+                    </div>
+                    <div class="log-entry">
+                        <span class="timestamp">[Active]</span> Payload size limit: 10KB max
+                    </div>
+                    <div class="log-entry">
+                        <span class="timestamp">[Active]</span> Suricata integration: Network IDS
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    const API_URL = 'http://127.0.0.1:5000';
+    const SURICATA_URL = 'http://localhost:9999';
+    let trafficChart;
+    let trafficInterval;
+    let loginInterval;
+    let isTrafficPaused = false;
+    let activeSimulation = false;
+    
+    // Initialize
+    document.addEventListener('DOMContentLoaded', function() {
+        initChart();
+        startPolling();
+        generateMockTraffic();
+        fetchSuricataLogs();
+        
+        // Initial data load
+        setTimeout(() => {
+            fetchSecurityEvents();
+            fetchMetrics();
+        }, 1000);
+    });
+    
+    function initChart() {
+        const ctx = document.getElementById('trafficChart').getContext('2d');
+        trafficChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: Array.from({length: 15}, (_, i) => `T-${15-i}`),
+                datasets: [
+                    {
+                        label: 'Normal Traffic',
+                        data: Array.from({length: 15}, () => Math.floor(Math.random() * 100) + 50),
+                        borderColor: '#60a5fa',
+                        backgroundColor: 'rgba(96, 165, 250, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    },
+                    {
+                        label: 'Attack Traffic',
+                        data: Array.from({length: 15}, () => 0),
+                        borderColor: '#f87171',
+                        backgroundColor: 'rgba(248, 113, 113, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { 
+                        labels: { 
+                            color: '#f8fafc',
+                            font: { size: 12 }
+                        }
+                    }
+                },
+                scales: {
+                    x: { 
+                        ticks: { color: '#94a3b8' },
+                        grid: { color: '#334155' }
+                    },
+                    y: { 
+                        beginAtZero: true,
+                        ticks: { color: '#94a3b8' },
+                        grid: { color: '#334155' },
+                        title: {
+                            display: true,
+                            text: 'Response Time (ms)',
+                            color: '#94a3b8'
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    function startPolling() {
+        // Poll for security events
+        setInterval(fetchSecurityEvents, 3000);
+        setInterval(fetchMetrics, 4000);
+        setInterval(fetchSuricataLogs, 5000);
+    }
+    
+    async function fetchSecurityEvents() {
+        try {
+            const response = await axios.get(`${API_URL}/api/security/events`);
+            updateEventList(response.data);
+        } catch (error) {
+            console.log('No security events yet or server not responding');
+        }
+    }
+    
+    async function fetchSuricataLogs() {
+        try {
+            const response = await axios.get(`${SURICATA_URL}/logs`);
+            updateSuricataList(response.data);
+            document.getElementById('suricataAlerts').textContent = response.data.length;
+        } catch (error) {
+            // Silently fail if Suricata server not running
+            console.log('Suricata server not available');
+        }
+    }
+    
+    async function fetchMetrics() {
+        try {
+            const response = await axios.get(`${API_URL}/api/metrics`);
+            updateMetrics(response.data);
+        } catch (error) {
+            console.log('No metrics yet');
+        }
+    }
+    
+    function updateEventList(events) {
+        const container = document.getElementById('eventList');
+        container.innerHTML = '';
+        
+        if (!events || events.length === 0) {
+            container.innerHTML = '<div style="padding: 20px; text-align: center; color: #94a3b8;">No security events yet. Try simulating an attack!</div>';
+            return;
+        }
+        
+        const recentEvents = events.slice(-8).reverse();
+        
+        recentEvents.forEach(event => {
+            const eventEl = document.createElement('div');
+            eventEl.className = `event-item event-${event.severity.toLowerCase()}`;
+            
+            const severityClass = `badge-${event.severity.toLowerCase()}`;
+            
+            eventEl.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <strong>${event.type.replace(/_/g, ' ')}</strong>
+                    <span class="severity-badge ${severityClass}">${event.severity}</span>
+                </div>
+                <div style="margin-top: 8px; font-size: 0.85em; color: #cbd5e1;">
+                    <div class="timestamp">${new Date(event.timestamp).toLocaleTimeString()}</div>
+                    <div>IP: <span class="ip-address">${event.details.ip || 'N/A'}</span></div>
+                    ${event.details.username ? `<div>User: ${event.details.username}</div>` : ''}
+                    ${event.details.query ? `<div>Query: <code style="color: #fbbf24;">${event.details.query.substring(0, 30)}${event.details.query.length > 30 ? '...' : ''}</code></div>` : ''}
+                </div>
+            `;
+            
+            container.appendChild(eventEl);
+        });
+        
+        document.getElementById('securityEvents').textContent = events.length;
+    }
+    
+    function updateSuricataList(alerts) {
+        const container = document.getElementById('suricataList');
+        container.innerHTML = '';
+        
+        if (!alerts || alerts.length === 0) {
+            container.innerHTML = '<div style="padding: 20px; text-align: center; color: #94a3b8;">No Suricata alerts yet.</div>';
+            return;
+        }
+        
+        const recentAlerts = alerts.slice(-6).reverse();
+        
+        recentAlerts.forEach(alert => {
+            const alertEl = document.createElement('div');
+            const severityClass = getSuricataSeverityClass(alert.alert.severity);
+            alertEl.className = `alert-item ${severityClass}`;
+            
+            alertEl.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <strong>${alert.alert.signature}</strong>
+                    <span class="severity-badge ${severityClass.replace('alert-', 'badge-')}">
+                        ${getSeverityText(alert.alert.severity)}
+                    </span>
+                </div>
+                <div style="margin-top: 8px; font-size: 0.85em; color: #cbd5e1;">
+                    <div class="timestamp">${new Date(alert.timestamp).toLocaleTimeString()}</div>
+                    <div>${alert.alert.category}</div>
+                    <div style="display: flex; gap: 15px; margin-top: 5px;">
+                        <div>From: <span class="ip-address">${alert.src_ip}</span></div>
+                        <div>To: <span class="ip-address">${alert.dest_ip}:${alert.dest_port}</span></div>
+                        <div>Proto: <span style="color: #60a5fa;">${alert.proto}</span></div>
+                    </div>
+                </div>
+            `;
+            
+            container.appendChild(alertEl);
+        });
+    }
+    
+    function getSuricataSeverityClass(severity) {
+        if (severity === 1) return 'alert-critical';
+        if (severity === 2) return 'alert-high';
+        return 'alert-medium';
+    }
+    
+    function getSeverityText(severity) {
+        const map = { 1: 'CRITICAL', 2: 'HIGH', 3: 'MEDIUM' };
+        return map[severity] || 'LOW';
+    }
+    
+    function updateMetrics(metrics) {
+        if (!metrics || metrics.length === 0) {
+            // Initialize with demo data
+            document.getElementById('totalRequests').textContent = '0';
+            document.getElementById('avgResponse').textContent = '0ms';
+            document.getElementById('requestLogs').innerHTML = '<div style="padding: 10px; text-align: center; color: #94a3b8;">No request logs yet</div>';
+            return;
+        }
+        
+        document.getElementById('totalRequests').textContent = metrics.length;
+        
+        const avgResponse = metrics.reduce((sum, m) => sum + m.responseTime, 0) / metrics.length;
+        document.getElementById('avgResponse').textContent = `${avgResponse.toFixed(0)}ms`;
+        
+       // Update chart
+        const recent = metrics.slice(-15);
+        trafficChart.data.labels = recent.map((m, i) => `T-${recent.length - i}`);
+
+        // Dataset[0] is Normal Traffic
+        trafficChart.data.datasets[0].data = recent.map(m => m.responseTime);
+
+        // Dataset[1] is Attack Traffic (Visual trick: if response > 150ms, show it here too)
+        trafficChart.data.datasets[1].data = recent.map(m => {
+            // LOWER THRESHOLD: Any request taking longer than 80ms is now flagged visually
+            return m.responseTime > 80 ? m.responseTime : 0; 
+        });
+        
+        // Update request logs
+        const logsContainer = document.getElementById('requestLogs');
+        logsContainer.innerHTML = '';
+        
+        recent.reverse().forEach(metric => {
+            const log = document.createElement('div');
+            log.className = 'log-entry';
+            log.innerHTML = `
+                <span class="timestamp">[${new Date(metric.timestamp).toLocaleTimeString().substring(0, 8)}]</span>
+                <span class="endpoint">${metric.endpoint}</span>
+                from <span class="ip-address">${metric.ip}</span>
+                - ${metric.responseTime.toFixed(0)}ms
+                <span style="color: ${metric.responseTime > 100 ? '#f87171' : '#34d399'}; float: right;">
+                    ${metric.responseTime > 100 ? '⚠️' : '✓'}
+                </span>
+            `;
+            logsContainer.appendChild(log);
+        });
+        
+        trafficChart.update();
+    }
+    
+    async function simulateAttack(attackType) {
+        if (activeSimulation) return;
+        
+        activeSimulation = true;
+        const status = document.getElementById('simulationStatus');
+        const progressContainer = document.getElementById('simulationProgress');
+        const progressBar = document.getElementById('progressBar');
+        
+        status.innerHTML = `<div class="log-entry simulation-active">🚀 Simulating ${attackType.replace('-', ' ')} attack...</div>`;
+        progressContainer.style.display = 'block';
+        progressBar.style.width = '0%';
+        
+        // Animate progress bar
+        let progress = 0;
+        const progressInterval = setInterval(() => {
+            progress += 10;
+            progressBar.style.width = `${progress}%`;
+            if (progress >= 100) clearInterval(progressInterval);
+        }, 200);
+        
+        try {
+            const response = await axios.post(`${API_URL}/api/simulate/attack`, { attackType });
+            status.innerHTML = `<div class="log-entry">✅ ${response.data.message}</div>`;
+            
+            // Update attack counter
+            const current = parseInt(document.getElementById('attackSims').textContent);
+            document.getElementById('attackSims').textContent = current + 1;
+            
+            // Add attack traffic to chart
+            if (trafficChart.data.datasets[1].data.length > 0) {
+                trafficChart.data.datasets[1].data = trafficChart.data.datasets[1].data.map(val => val * 2);
+            } else {
+                trafficChart.data.datasets[1].data = trafficChart.data.datasets[0].data.map(val => val * 2);
+            }
+            trafficChart.update();
+            
+            // Force refresh of data
+            setTimeout(() => {
+                fetchSecurityEvents();
+                fetchMetrics();
+            }, 500);
+            
+        } catch (error) {
+            status.innerHTML = `<div class="log-entry">❌ Error: ${error.message}. Make sure server is running!</div>`;
+            console.error('Attack simulation error:', error);
+        }
+        
+        // Hide progress after 3 seconds
+        setTimeout(() => {
+            progressContainer.style.display = 'none';
+            status.innerHTML = '';
+            activeSimulation = false;
+        }, 3000);
+    }
+    
+    function generateMockTraffic() {
+        // Simulate normal API traffic
+        trafficInterval = setInterval(async () => {
+            if (isTrafficPaused) return;
+            
+            try {
+                await axios.get(`${API_URL}/api/health`);
+                await axios.get(`${API_URL}/api/users?search=test`);
+            } catch (error) {
+                // Silent fail for demo
+            }
+        }, 7000);
+        
+        // Simulate occasional failed logins
+        loginInterval = setInterval(async () => {
+            if (isTrafficPaused) return;
+            
+            try {
+                await axios.post(`${API_URL}/api/login`, {
+                    username: 'user' + Math.floor(Math.random() * 10),
+                    password: 'wrong'
+                });
+            } catch (error) {
+                // Expected to fail
+            }
+        }, 10000);
+    }
+    
+    function toggleTraffic() {
+        isTrafficPaused = !isTrafficPaused;
+        const toggleBtn = document.getElementById('trafficToggle');
+        
+        if (isTrafficPaused) {
+            toggleBtn.textContent = '▶️ Resume Traffic';
+            toggleBtn.style.background = '#16a34a';
+            addLogEntry('Traffic generation paused');
+        } else {
+            toggleBtn.textContent = '⏸️ Pause Traffic';
+            toggleBtn.style.background = '#334155';
+            addLogEntry('Traffic generation resumed');
+        }
+    }
+    
+    async function resetDemo() {
+        if (confirm('Reset all demo data? This will clear all events and metrics.')) {
+            try {
+                const response = await axios.post(`${API_URL}/api/reset`);
+                
+                // Reset counters
+                document.getElementById('totalRequests').textContent = '0';
+                document.getElementById('securityEvents').textContent = '0';
+                document.getElementById('suricataAlerts').textContent = '0';
+                document.getElementById('avgResponse').textContent = '0ms';
+                document.getElementById('attackSims').textContent = '0';
+                
+                // Clear displays
+                document.getElementById('eventList').innerHTML = '';
+                document.getElementById('suricataList').innerHTML = '';
+                document.getElementById('requestLogs').innerHTML = '';
+                
+                // Reset chart with initial data
+                trafficChart.data.labels = Array.from({length: 15}, (_, i) => `T-${15-i}`);
+                trafficChart.data.datasets[0].data = Array.from({length: 15}, () => Math.floor(Math.random() * 100) + 50);
+                trafficChart.data.datasets[1].data = Array.from({length: 15}, () => 0);
+                trafficChart.update();
+                
+                addLogEntry('Demo data reset complete');
+                
+                // Refresh data after reset
+                setTimeout(() => {
+                    fetchSecurityEvents();
+                    fetchMetrics();
+                }, 1000);
+                
+            } catch (error) {
+                addLogEntry(`Reset failed: ${error.message}. Make sure /api/reset endpoint exists!`);
+                console.error('Reset error:', error);
+            }
+        }
+    }
+    
+    function addLogEntry(message) {
+        const logsContainer = document.getElementById('requestLogs');
+        
+        // Initialize if empty
+        if (!logsContainer.innerHTML.trim()) {
+            logsContainer.innerHTML = '';
+        }
+        
+        const log = document.createElement('div');
+        log.className = 'log-entry';
+        log.innerHTML = `
+            <span class="timestamp">[${new Date().toLocaleTimeString()}]</span>
+            <span style="color: #fbbf24;">SYSTEM:</span> ${message}
+        `;
+        
+        // Add to top
+        if (logsContainer.firstChild) {
+            logsContainer.insertBefore(log, logsContainer.firstChild);
+        } else {
+            logsContainer.appendChild(log);
+        }
+        
+        // Keep only last 10 logs
+        while (logsContainer.children.length > 10) {
+            logsContainer.removeChild(logsContainer.lastChild);
+        }
+    }
+</script>
+</body>
+</html>
