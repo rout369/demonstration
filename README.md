@@ -28,8 +28,8 @@ This project is a technical demonstration of a multi-layered security monitoring
 
 1. **Clone the Repository**:
 ```bash
-git clone https://github.com/rout-369/demonstration.git
-cd SecureAPI-Demonstration
+git clone https://github.com/rout369/demonstration.git
+cd demonstration
 
 ```
 
@@ -49,7 +49,3 @@ npm install
 4. **Launch Dashboard**: Open `http://localhost:5000` in your browser.
 
 ---
-
-### 🚀 Deployment Tip
-
-Since you are demonstrating this for a startup, I recommend using **GitHub Codespaces**. This allows you to provide a "Launch" button on your GitHub page so they can see the live server and dashboard running in their browser without installing anything locally.
